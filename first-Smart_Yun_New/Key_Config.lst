@@ -1,0 +1,82 @@
+C51 COMPILER V9.56.0.0   KEY_CONFIG                                                        01/01/2017 12:55:18 PAGE 1   
+
+
+C51 COMPILER V9.56.0.0, COMPILATION OF MODULE KEY_CONFIG
+OBJECT MODULE PLACED IN Key_Config.obj
+COMPILER INVOKED BY: F:\Keil_v5\C51\BIN\C51.EXE Key\Key_Config.c LARGE OPTIMIZE(8,SPEED) BROWSE INCDIR(.\Control;.\Delay
+                    -;.\Key;.\Usart) DEBUG OBJECTEXTEND PRINT(.\Key_Config.lst) OBJECT(Key_Config.obj)
+
+line level    source
+
+   1          #include "Smart_Usart.h"
+   2          #include "delay.h"
+   3          #include "Key_Config.h"
+   4          #include "Usart_communication.h"
+   5          
+   6          sbit beep = P2^3;
+   7          
+   8          void di()
+   9          {
+  10   1              beep = 0;
+  11   1              delayms(300);
+  12   1              beep = 1;
+  13   1      }
+  14          
+  15          /* 按键配置设备入网 */
+  16          void Key_Usart_Config()
+  17          {
+  18   1              if( key_config_Ap == 0 )                                // SoftAp配置模式
+  19   1              {
+  20   2                      Delay_ms(20);
+  21   2                      if( key_config_Ap == 0 ) 
+  22   2                      {       
+  23   3                              di();
+  24   3                              REN = 0;
+  25   3                              Usart_SendArrang( mcu_send_3_1, 10 );
+  26   3                              while( key_config_Ap == 0 );
+  27   3                              REN=1;
+  28   3                      }       
+  29   2              }
+  30   1      
+  31   1              if( key_config_Air == 0 )                     // AirLink配置模式
+  32   1              {
+  33   2                      Delay_ms(20);
+  34   2                      if( key_config_Air == 0 )
+  35   2                      {       
+  36   3                              di();
+  37   3                              REN = 0;
+  38   3                              Usart_SendArrang( mcu_send_3_2, 10 );
+  39   3                              while( key_config_Air == 0 );
+  40   3                              REN=1;  
+  41   3                      }       
+  42   2              }       
+  43   1              
+  44   1              if( key_rt == 0 )                    
+  45   1              {
+  46   2                      Delay_ms(20);
+  47   2                      if( key_rt == 0 )
+  48   2                      {       
+  49   3                              di();
+  50   3                              REN = 0;
+  51   3                              Usart_SendArrang( mcu_send_4, 9 );
+  52   3                              while( key_rt == 0 );
+  53   3                              REN=1;  
+  54   3                      }       
+C51 COMPILER V9.56.0.0   KEY_CONFIG                                                        01/01/2017 12:55:18 PAGE 2   
+
+  55   2              }
+  56   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    107    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

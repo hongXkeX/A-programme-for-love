@@ -1,0 +1,1 @@
+"Key\Key_Config.c" LARGE OPTIMIZE (8,SPEED) BROWSE INCDIR(.\Control;.\Delay;.\Key;.\Usart) DEBUG OBJECTEXTEND PRINT(.\Key_Config.lst) OBJECT(Key_Config.obj)

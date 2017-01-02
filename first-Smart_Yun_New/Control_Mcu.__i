@@ -1,0 +1,1 @@
+"Control\Control_Mcu.c" LARGE OPTIMIZE (8,SPEED) BROWSE INCDIR(.\Control;.\Delay;.\Key;.\Usart) DEBUG OBJECTEXTEND PRINT(.\Control_Mcu.lst) OBJECT(Control_Mcu.obj)

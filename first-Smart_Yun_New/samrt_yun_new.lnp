@@ -1,0 +1,9 @@
+"main.obj",
+"Smart_Usart.obj",
+"Usart_communication.obj",
+"Control_Mcu.obj",
+"Key_Config.obj",
+"delay.obj",
+"Usart_Code.obj" 
+TO "samrt_yun_new" 
+RAMSIZE(256) 

@@ -1,0 +1,80 @@
+C51 COMPILER V9.56.0.0   USART_CODE                                                        01/01/2017 12:55:18 PAGE 1   
+
+
+C51 COMPILER V9.56.0.0, COMPILATION OF MODULE USART_CODE
+OBJECT MODULE PLACED IN Usart_Code.obj
+COMPILER INVOKED BY: F:\Keil_v5\C51\BIN\C51.EXE Usart\Usart_Code.c LARGE OPTIMIZE(8,SPEED) BROWSE INCDIR(.\Control;.\Del
+                    -ay;.\Key;.\Usart) DEBUG OBJECTEXTEND PRINT(.\Usart_Code.lst) OBJECT(Usart_Code.obj)
+
+line level    source
+
+   1          #include "Smart_Usart.h"
+   2          
+   3          uchar usartbuf[50]={0};
+   4          uchar usart2buf[8]={0};
+   5          
+   6          uchar sn,checksum,usrtlen,usrt2len,usarrtflag,num_usart;
+   7          uchar send_3_config,send_7_error,send_8_dev,send_9_dev;
+   8          uchar data temper = 0x00;
+   9          uchar data humper = 0x00;
+  10          uchar num_usart_se = 0;
+  11          
+  12          /* 1. wifi模组请求设备信息，mcu回复 */
+  13          uchar mcu_send_1[75]={
+  14          0xff,0xff,0x00,0x47,0x02,0x55,0x00,0x00,
+  15          0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x34,  // protocol_ver(8B)
+  16          0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x34,  // p0_ver(8B)
+  17          0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x31,  // hard_ver(8B)
+  18          0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x31,  // soft_ver(8B)
+  19          0x35,0x38,0x63,0x33,0x65,0x31,0x61,0x33, 
+  20          0x37,0x61,0x63,0x65,0x34,0x62,0x32,0x65,
+  21          0x38,0x39,0x32,0x63,0x61,0x39,0x62,0x30, 
+  22          0x33,0x37,0x62,0x33,0x39,0x36,0x32,0x37,
+  23          0x00,0x00,0x55};                                                  // bindable_timeout(2B) + ...                                                                                         
+  24          
+  25          /* 2. wifi模组与设备mcu心跳，mcu回复 */
+  26          uchar mcu_send_2[9]={0xff,0xff,0x00,0x05,0x08,0x55,0x00,0x00,0x55};
+  27          
+  28          /* 3. 设备mcu通知wifi模组进入配置模式，mcu发送 */
+  29          uchar mcu_send_3_1[10]={0xff,0xff,0x00,0x06,0x09,0x00,0x00,0x00,0x01,0x10};
+  30          uchar mcu_send_3_2[10]={0xff,0xff,0x00,0x06,0x09,0x00,0x00,0x00,0x02,0x11};
+  31          
+  32          /* 4. 设备mcu重置wifi，mcu发送 */
+  33          uchar mcu_send_4[9]={0xff,0xff,0x00,0x05,0x0b,0x00,0x00,0x00,0x10};
+  34          
+  35          /* 5. wifi模组向设备通知工作状态变化，mcu回复 */
+  36          uchar mcu_send_5[9]={0xff,0xff,0x00,0x05,0x0e,0x55,0x00,0x00,0x55};
+  37          
+  38          /* 6. wifi模组请求重启mcu，mcu回复 */
+  39          uchar mcu_send_6[9]={0xff,0xff,0x00,0x05,0x10,0x55,0x00,0x00,0x55};
+  40          
+  41          /* 7. 非法消息通知，mcu回复 */
+  42          uchar mcu_send_7[10]={0xff,0xff,0x00,0x06,0x12,0x55,0x00,0x00,0x11,0x55};
+  43          
+  44          /* 8. wifi模组读取设备当前状态，mcu回复 */
+  45          uchar mcu_send_8[13]={0xff,0xff,0x00,0x09,0x04,0x55,0x00,0x00,0x03,0x00,0x00,0x00,0x55};
+  46          
+  47          /* 9. 设备向wifi主动上报当前状态，mcu发送 */
+  48          uchar mcu_send_9[13]={0xff,0xff,0x00,0x09,0x05,0x55,0x00,0x00,0x04,0x00,0x00,0x00,0x55};
+  49          
+  50          /* 10. wifi模组控制设备，mcu回复 */
+  51          uchar mcu_send_10[9]={0xff,0xff,0x00,0x05,0x04,0x55,0x00,0x00,0x55};
+  52          
+  53          /* 12. mcu通知wifi进入可绑定模式，mcu发送 */
+  54          uchar mcu_send_12[9]={0xff,0xff,0x00,0x05,0x15,0x55,0x00,0x00,0x55};
+C51 COMPILER V9.56.0.0   USART_CODE                                                        01/01/2017 12:55:18 PAGE 2   
+
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   ----    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =    254    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      2    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

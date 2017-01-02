@@ -1,0 +1,1 @@
+"Usart\Usart_Code.c" LARGE OPTIMIZE (8,SPEED) BROWSE INCDIR(.\Control;.\Delay;.\Key;.\Usart) DEBUG OBJECTEXTEND PRINT(.\Usart_Code.lst) OBJECT(Usart_Code.obj)

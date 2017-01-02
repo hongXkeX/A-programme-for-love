@@ -1,0 +1,57 @@
+C51 COMPILER V9.56.0.0   CONTROL_MCU                                                       01/01/2017 12:55:18 PAGE 1   
+
+
+C51 COMPILER V9.56.0.0, COMPILATION OF MODULE CONTROL_MCU
+OBJECT MODULE PLACED IN Control_Mcu.obj
+COMPILER INVOKED BY: F:\Keil_v5\C51\BIN\C51.EXE Control\Control_Mcu.c LARGE OPTIMIZE(8,SPEED) BROWSE INCDIR(.\Control;.\
+                    -Delay;.\Key;.\Usart) DEBUG OBJECTEXTEND PRINT(.\Control_Mcu.lst) OBJECT(Control_Mcu.obj)
+
+line level    source
+
+   1          #include "Smart_Usart.h"
+   2          #include "Control_Mcu.h"
+   3          
+   4          /* 改变设备状态 */
+   5          void Control_Mcu()
+   6          {
+   7   1              switch( usartbuf[9] )
+   8   1              {
+   9   2                      case 0x01:                          // 标志最后一位数据值有效
+  10   2                              if( usartbuf[10] == 0x01 )      // 数据值有效灯亮
+  11   2                              {
+  12   3                                      lcd0 = 0;
+  13   3                              }
+  14   2                              else if( usartbuf[10] == 0 )    // 数据值无效灯灭
+  15   2                              {
+  16   3                                      lcd0 = 1; 
+  17   3                              }
+  18   2                      break;
+  19   2                              
+  20   2                      case 0x02:                         
+  21   2                              if( usartbuf[10] == 0x02 )    
+  22   2                              {
+  23   3                                      lcd1 = 0;
+  24   3                              }
+  25   2                              else if( usartbuf[10] == 0 ) 
+  26   2                              {
+  27   3                                      lcd1 = 1;
+  28   3                              }
+  29   2                      break;
+  30   2                              
+  31   2                              
+  32   2              }
+  33   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     45    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

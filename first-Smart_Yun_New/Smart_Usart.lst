@@ -1,0 +1,143 @@
+C51 COMPILER V9.56.0.0   SMART_USART                                                       01/01/2017 12:55:18 PAGE 1   
+
+
+C51 COMPILER V9.56.0.0, COMPILATION OF MODULE SMART_USART
+OBJECT MODULE PLACED IN Smart_Usart.obj
+COMPILER INVOKED BY: F:\Keil_v5\C51\BIN\C51.EXE Usart\Smart_Usart.c LARGE OPTIMIZE(8,SPEED) BROWSE INCDIR(.\Control;.\De
+                    -lay;.\Key;.\Usart) DEBUG OBJECTEXTEND PRINT(.\Smart_Usart.lst) OBJECT(Smart_Usart.obj)
+
+line level    source
+
+   1          #include "Smart_Usart.h"
+   2          
+   3          unsigned char nowdate,lastdate,nowdate1;
+   4          
+   5          /* 初始化函数 */
+   6          void Usart_Init()
+   7          {
+   8   1              TMOD = 0x21;                                    //定时器0工作方式1，定时器1工作方式2
+   9   1              TH0 = ( 65536 - 10000 ) / 256;
+  10   1              TL0 = ( 65536 - 10000 ) % 256;
+  11   1              TH1 = 0xfd;
+  12   1              TL1 = 0xfd;
+  13   1              TR0 = 1;                        // 定时器0开始计时
+  14   1              TR1 = 1;                        // 定时器1开始计时
+  15   1              REN = 1;
+  16   1              SM0 = 0;
+  17   1              SM1 = 1;
+  18   1              ES = 1;
+  19   1              
+  20   1              S2CON = 0x50;                                //方式1，八位数据，可变波特率
+  21   1              AUXR1 = 0x00;                                //1T工作方式
+  22   1              PCON  = 0x00;                                    //不倍增波特率
+  23   1              IP2   = 0x00;                                    //优先级默认
+  24   1              BRT   = 0XFD;                                    //设置波特率9600
+  25   1              AUXR  = 0x10;                                    //启动波特率发生器
+  26   1              EA    = 1;                                           //开总中断
+  27   1              IE2   = 0x01;                                    //开串口2中断
+  28   1              
+  29   1              key_config_Ap = 1;
+  30   1              key_config_Air = 1;     
+  31   1      }
+  32          
+  33          /* mcu发送数据程序 (mcu --> wifi) */
+  34          void Usart_SendArrang(uchar *dat,uchar len)
+  35          {
+  36   1              unsigned char i;
+  37   1              ES = 0;
+  38   1              for( i = 0; i < len; i++ )
+  39   1              {
+  40   2                      SBUF = dat[i];
+  41   2                      /*
+  42   2                      if( i >= 2 && dat[i] == 0xff ) {
+  43   2                              dat[++i] = 0x55;            // 对于发送方，如检测到出现0xff的数据内容，需要在0xff后添加0x55
+  44   2                              --i;
+  45   2                      }
+  46   2                      */
+  47   2                      while( !TI );
+  48   2                      TI = 0;
+  49   2              } 
+  50   1              ES = 1;
+  51   1      }
+  52          
+  53          /* 定时器0中断 */
+  54          void Timer0_Int() interrupt 1
+C51 COMPILER V9.56.0.0   SMART_USART                                                       01/01/2017 12:55:18 PAGE 2   
+
+  55          {
+  56   1              TH0 = ( 65536 - 10000 ) / 256;
+  57   1              TL0 = ( 65536 - 10000 ) % 256;  
+  58   1              num_usart++;
+  59   1              num_usart_se++;
+  60   1      }
+  61          
+  62          /* 串口中断函数  (wifi --> mcu) */
+  63          void Usart_Int() interrupt 4
+  64          {
+  65   1              num_usart = 0;
+  66   1              ET0 = 1;
+  67   1              TR0 = 1;
+  68   1              usartbuf[ usrtlen++ ] = SBUF;
+  69   1              nowdate = SBUF;
+  70   1              if( usrtlen==2 )
+  71   1              {
+  72   2                      if( usartbuf[0] != 0xff || usartbuf[1] != 0xff )
+  73   2                      {
+  74   3                              usrtlen = 0;
+  75   3                      }
+  76   2              }
+  77   1              // 对于接收方，如检测到非包头部分出现0xff,需要把紧跟其后的0x55移除
+  78   1              if( (lastdate == 0xff ) && ( nowdate == 0x55 ) )
+  79   1              {
+  80   2                       usrtlen = usrtlen - 1;
+  81   2              }
+  82   1              lastdate = nowdate;
+  83   1              RI = 0;
+  84   1      }
+  85          
+  86          /* 数据校验程序 */ 
+  87          unsigned char DateCheck()
+  88          {
+  89   1              unsigned char i,temp;
+  90   1              unsigned char CheckSum=0;
+  91   1              for( i = 0; i < ( usartbuf[3] + 1 ); i++ ) //+1，长度包含校验和，但是不包括长度的2个字节，length=长度+2个
+             -字节-校验和占用的一个字节
+  92   1              {
+  93   2                      CheckSum = CheckSum + usartbuf[i+2];
+  94   2              }
+  95   1              temp = usartbuf[3] + 3;                                    //提取校验和，长度+4-1为校验和位置，数组从0开始
+  96   1              if( CheckSum == usartbuf[temp] )
+  97   1                 return 1;
+  98   1              else
+  99   1                 return 0;
+ 100   1      }
+ 101          
+ 102          void uart2_isr() interrupt 8
+ 103          {
+ 104   1              usart2buf[ usrt2len++ ] = S2BUF;
+ 105   1              
+ 106   1              if( usrt2len==2 )
+ 107   1              {
+ 108   2                      if( usartbuf[0] != 0xff || usartbuf[1] != 0xff )
+ 109   2                      {
+ 110   3                              usrt2len = 0;
+ 111   3                      }
+ 112   2              }
+ 113   1              S2CON &= ~0x01;
+ 114   1      }
+
+C51 COMPILER V9.56.0.0   SMART_USART                                                       01/01/2017 12:55:18 PAGE 3   
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    382    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =      3       3
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

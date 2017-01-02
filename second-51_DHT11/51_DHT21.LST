@@ -1,0 +1,403 @@
+C51 COMPILER V9.56.0.0   51_DHT21                                                          01/01/2017 15:20:59 PAGE 1   
+
+
+C51 COMPILER V9.56.0.0, COMPILATION OF MODULE 51_DHT21
+OBJECT MODULE PLACED IN 51_DHT21.OBJ
+COMPILER INVOKED BY: F:\Keil_v5\C51\BIN\C51.EXE 51_DHT21.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND
+
+line level    source
+
+   1          #include <reg52.h>
+   2          #include <intrins.h> 
+   3          
+   4          typedef unsigned char  u8;      
+   5          typedef signed   char  s8;       
+   6          typedef unsigned int   u16;     
+   7          
+   8          #define uchar unsigned char
+   9          #define uint unsigned int
+  10          #define Data_0_time 4
+  11          
+  12          //----------------------------------------------//
+  13          //----------------IO口定义区--------------------//
+  14          //----------------------------------------------//
+  15          sbit P2_0 = P2^0;
+  16          sbit ds = P2^2;
+  17          sbit dula = P2^6;
+  18          sbit wela = P2^7;
+  19          sbit lcden = P3^4;
+  20          sbit lcdrs = P3^5;
+  21          sbit lcdrw = P3^6;
+  22          
+  23          uchar t0_num = 0;
+  24          bit flag = 0;
+  25          uint temp = 0;
+  26          
+  27          uchar num;
+  28          uchar table[] = "Temperature:";
+  29          uchar table1[] = "Humidity:";
+  30                                                           
+  31          //----------------------------------------------//
+  32          //----------------定义区--------------------//
+  33          //----------------------------------------------//
+  34          u8  U8FLAG;
+  35          u8  U8count,U8temp;
+  36          u8  U8T_data_H,U8T_data_L,U8RH_data_H,U8RH_data_L,U8checkdata;
+  37          u8  U8T_data_H_temp,U8T_data_L_temp,U8RH_data_H_temp,U8RH_data_L_temp,U8checkdata_temp;
+  38          u8  U8comdata;  
+  39          u8  indata[5];
+  40          u8  count, count_r=0;
+  41          u8  str[5]={ 0 };
+  42          
+  43          u8 usartbuf[7]={ 0 };
+  44          u8 usrtlen = 0;
+  45          u8 checksum;
+  46          u8 num_usart;
+  47          u8 usarrtflag;
+  48          
+  49          /*
+  50          * 包头固定0xffff
+  51          * 地址 0xaa
+  52          * 功能号 0x01
+  53          * 长度 len = 02
+  54          * 之后len个数据
+  55          * 最后一位校验
+C51 COMPILER V9.56.0.0   51_DHT21                                                          01/01/2017 15:20:59 PAGE 2   
+
+  56          */
+  57          u8 mcu_send[8]={0xff,0xff,0xAA,0x01,0x02,0x00,0x00,0x00};
+  58          
+  59          /* 初始化函数 */
+  60          void Usart_Init()
+  61          {
+  62   1              TMOD = 0x20;
+  63   1              TH0 = ( 65536 - 46080 ) / 256;
+  64   1              TL0 = ( 65536 - 46080 ) % 256;
+  65   1              TH1 = 0xfd;
+  66   1              TL1 = 0xfd;
+  67   1              TR1 = 1;                        // 定时器1开始计时
+  68   1              ET0 = 1;
+  69   1              REN = 0;                        // 只发不收
+  70   1              SM0 = 0;
+  71   1              SM1 = 1;
+  72   1              EA = 1;
+  73   1              ES = 1;
+  74   1      }
+  75          
+  76          /* mcu发送数据程序 */
+  77          void Usart_SendArrang( u8 *dat, u8 len)
+  78          {
+  79   1              unsigned char i;
+  80   1              ES = 0;
+  81   1              for( i = 0; i < len; i++ )
+  82   1              {
+  83   2                      SBUF = dat[i];
+  84   2                      while( !TI );
+  85   2                      TI = 0;
+  86   2              } 
+  87   1              ES = 1;
+  88   1      }
+  89          
+  90          void Delay(u16 j)
+  91          {      
+  92   1              u8 i;
+  93   1              for(;j>0;j--) {         
+  94   2                      for(i=0;i<27;i++);
+  95   2              }
+  96   1      }
+  97               
+  98          void Delay_10us(void)
+  99          {
+ 100   1              u8 i;
+ 101   1          i--;
+ 102   1          i--;
+ 103   1          i--;
+ 104   1          i--;
+ 105   1          i--;
+ 106   1          i--;
+ 107   1      }
+ 108          
+ 109          void delayus(uint t)
+ 110          {
+ 111   1              while(t--);
+ 112   1      }
+ 113          
+ 114          void delayms(uint x)
+ 115          {
+ 116   1              uint i,j;
+ 117   1              for(i=x; i>0; i--)
+C51 COMPILER V9.56.0.0   51_DHT21                                                          01/01/2017 15:20:59 PAGE 3   
+
+ 118   1                      for(j=111; j>0; j--);
+ 119   1      }  
+ 120          
+ 121          void ds_reset()         // 初始化DS18B20
+ 122          {
+ 123   1              ds = 1;         // 拉低准备
+ 124   1              delayus(5);             // 拉低总线前短暂延时
+ 125   1              ds = 0;                 // 拉低总线 480us~960us
+ 126   1              delayus(60);    // 拉低保持约600us 发出(TX)一个复位脉冲
+ 127   1              ds = 1;             // 释放总线后进入接收状态（RX）
+ 128   1              delayus(5);         // 18b20 探测到上步I/O引脚的上升沿后 等待15~60us
+ 129   1              if(ds == 0)             // 18b20 等待15~60us后 发出一个60~240us低电平信号构成的存在脉冲
+ 130   1                      flag = 1;    
+ 131   1              else
+ 132   1                      flag = 0;
+ 133   1              delayus(20);    // 存在脉冲需持续60~240us  此处约200us  
+ 134   1      }
+ 135          
+ 136          bit ds_read_bit()        
+ 137          {
+ 138   1              bit dat;
+ 139   1              ds = 0;
+ 140   1              _nop_();
+ 141   1              _nop_();
+ 142   1              ds = 1;
+ 143   1              _nop_();
+ 144   1              dat = ds;
+ 145   1              delayus(10);
+ 146   1              return dat;
+ 147   1      }
+ 148          
+ 149          uchar ds_read_byte()
+ 150          {
+ 151   1              uchar i,j,k;
+ 152   1              for(i=0; i<8; i++)
+ 153   1              {
+ 154   2                      j = ds_read_bit();      // 从低位开始读
+ 155   2                      k = (k>>1) | (j<<7);    // 移位整理数据
+ 156   2              }
+ 157   1              return k;
+ 158   1      }
+ 159          
+ 160          void ds_write_byte(uchar dat)
+ 161          {
+ 162   1              uchar i;
+ 163   1              for(i=0; i<8; i++)
+ 164   1              {
+ 165   2                      ds = 0;
+ 166   2                      _nop_();
+ 167   2                      ds = dat & 0x01;
+ 168   2                      delayus(6);
+ 169   2                      ds = 1;
+ 170   2                      dat = dat >> 1;
+ 171   2              }
+ 172   1              delayus(6);
+ 173   1      }
+ 174          
+ 175          void read_temperature()
+ 176          {
+ 177   1              uchar a,b;
+ 178   1              ds_reset();
+ 179   1              ds_write_byte(0xcc);     // 只有一只从机在总线上时 忽略ROM
+C51 COMPILER V9.56.0.0   51_DHT21                                                          01/01/2017 15:20:59 PAGE 4   
+
+ 180   1              ds_write_byte(0xbe);     // 忽略ROM指令后只能接读暂存器指令
+ 181   1              a=ds_read_byte();                // 读低8位
+ 182   1              b=ds_read_byte();                // 读高8位
+ 183   1              temp=b;
+ 184   1              temp=temp<<8;
+ 185   1              temp=temp|a;                     // 组合成uint型温度数据
+ 186   1              temp=temp*0.0625*10+0.5;
+ 187   1              mcu_send[5] = temp / 10;
+ 188   1      }
+ 189          
+ 190          void COM(void)
+ 191          {
+ 192   1              u8 i;
+ 193   1          for(i=0;i<8;i++)       
+ 194   1              {
+ 195   2                      U8FLAG=2;       
+ 196   2                      while((!P2_0)&&U8FLAG++);
+ 197   2                      Delay_10us();
+ 198   2                      Delay_10us();
+ 199   2                      Delay_10us();
+ 200   2                  U8temp=0;
+ 201   2                  if(P2_0) U8temp=1;
+ 202   2                      U8FLAG=2;
+ 203   2                      while((P2_0)&&U8FLAG++);
+ 204   2                      //超时则跳出for循环               
+ 205   2                      if(U8FLAG==1)break;
+ 206   2                      //判断数据位是0还是1     
+ 207   2                      // 如果高电平高过预定0高电平值则数据位为 1
+ 208   2                      U8comdata<<=1;
+ 209   2                      U8comdata|=U8temp;        // 0
+ 210   2              }//rof   
+ 211   1      }
+ 212          
+ 213                  //--------------------------------
+ 214                  //-----湿度读取子程序 ------------
+ 215                  //--------------------------------
+ 216                  //----以下变量均为全局变量--------
+ 217                  //----温度高8位== U8T_data_H------
+ 218                  //----温度低8位== U8T_data_L------
+ 219                  //----湿度高8位== U8RH_data_H-----
+ 220                  //----湿度低8位== U8RH_data_L-----
+ 221                  //----校验 8位 == U8checkdata-----
+ 222                  //----调用相关子程序如下----------
+ 223                  //---- Delay();, Delay_10us();,COM(); 
+ 224                  //--------------------------------
+ 225          
+ 226          void RH(void)
+ 227          {
+ 228   1              //主机拉低18ms 
+ 229   1          P2_0=0;
+ 230   1              Delay(180);
+ 231   1              P2_0=1;
+ 232   1              //总线由上拉电阻拉高 主机延时20us
+ 233   1              Delay_10us();
+ 234   1              Delay_10us();
+ 235   1              Delay_10us();
+ 236   1              Delay_10us();
+ 237   1              //主机设为输入 判断从机响应信号 
+ 238   1              P2_0=1;
+ 239   1              //判断从机是否有低电平响应信号 如不响应则跳出，响应则向下运行     
+ 240   1              if(!P2_0)                //T !    
+ 241   1              {
+C51 COMPILER V9.56.0.0   51_DHT21                                                          01/01/2017 15:20:59 PAGE 5   
+
+ 242   2                      U8FLAG=2;
+ 243   2                  //判断从机是否发出 80us 的低电平响应信号是否结束     
+ 244   2                      while((!P2_0)&&U8FLAG++);
+ 245   2                  U8FLAG=2;
+ 246   2                  //判断从机是否发出 80us 的高电平，如发出则进入数据接收状态
+ 247   2                  while((P2_0)&&U8FLAG++);
+ 248   2                  //数据接收状态               
+ 249   2                  COM();
+ 250   2                  U8RH_data_H_temp=U8comdata;
+ 251   2                  COM();
+ 252   2                  U8RH_data_L_temp=U8comdata;
+ 253   2                  COM();
+ 254   2                  U8T_data_H_temp=U8comdata;
+ 255   2                  COM();
+ 256   2                  U8T_data_L_temp=U8comdata;
+ 257   2                  COM();
+ 258   2                  U8checkdata_temp=U8comdata;
+ 259   2                  P2_0=1;
+ 260   2                  //数据校验 
+ 261   2                  U8temp=(U8T_data_H_temp+U8T_data_L_temp+U8RH_data_H_temp+U8RH_data_L_temp);
+ 262   2                  if(U8temp==U8checkdata_temp)
+ 263   2                  {
+ 264   3                              mcu_send[6]=U8RH_data_H_temp;
+ 265   3                          U8RH_data_L=U8RH_data_L_temp;
+ 266   3                          //mcu_send[5]=U8T_data_H_temp;  // 温度在前
+ 267   3                          U8T_data_L=U8T_data_L_temp;
+ 268   3                          U8checkdata=U8checkdata_temp;
+ 269   3                  }
+ 270   2              }
+ 271   1      }
+ 272                  
+ 273          void Usart_Communication()
+ 274          {
+ 275   1              u8 i;
+ 276   1              checksum = 0;              
+ 277   1              for( i = 2; i < 7; i++ ) {
+ 278   2                      checksum += mcu_send[i];
+ 279   2              } 
+ 280   1              checksum = checksum % 256;
+ 281   1              mcu_send[7] = checksum;
+ 282   1              Usart_SendArrang( mcu_send, 8 );
+ 283   1      }
+ 284          
+ 285          void write_com(uchar com)
+ 286          {
+ 287   1              lcdrs=0;
+ 288   1              P0=com;
+ 289   1              delayms(5);
+ 290   1              lcden=1;
+ 291   1              delayms(5);
+ 292   1              lcden=0;        
+ 293   1      }
+ 294          
+ 295          void write_dat(uchar dat)
+ 296          {
+ 297   1              lcdrs=1;
+ 298   1              P0=dat;
+ 299   1              delayms(5);
+ 300   1              lcden=1;
+ 301   1              delayms(5);
+ 302   1              lcden=0;
+ 303   1      }
+C51 COMPILER V9.56.0.0   51_DHT21                                                          01/01/2017 15:20:59 PAGE 6   
+
+ 304          
+ 305          void init()
+ 306          {
+ 307   1              dula=0;
+ 308   1              wela=0;
+ 309   1              lcden=0;
+ 310   1              lcdrw=0;
+ 311   1              write_com(0x38);
+ 312   1              write_com(0x0c);
+ 313   1              write_com(0x06);
+ 314   1              write_com(0x01);
+ 315   1              
+ 316   1              write_com(0x80);
+ 317   1              for(num=0;num<12;num++){
+ 318   2                      write_dat(table[num]);
+ 319   2                      delayms(5);
+ 320   2              }
+ 321   1              write_com(0x80+0x40);
+ 322   1              for(num=0;num<9;num++){
+ 323   2                      write_dat(table1[num]);
+ 324   2                      delayms(5);
+ 325   2              }
+ 326   1      }
+ 327          
+ 328          
+ 329          //----------------------------------------------
+ 330          //main()功能描述:  AT89C51  11.0592MHz  串口发 
+ 331          //送温湿度数据,波特率 9600 
+ 332          //----------------------------------------------
+ 333          void main()
+ 334          {
+ 335   1              init();
+ 336   1              Usart_Init();
+ 337   1              Delay(1);         // 延时100US（12M晶振)
+ 338   1              
+ 339   1              while(1)
+ 340   1              {   
+ 341   2                  ds_reset();                  // 初始化DS18B20
+ 342   2                  ds_write_byte(0xcc);             // 忽略ROM
+ 343   2                  ds_write_byte(0x44);                 // 温度转换指令
+ 344   2                      read_temperature();          
+ 345   2                  RH();
+ 346   2                      
+ 347   2                      write_com(0x80 + 12);
+ 348   2                      delayms(3);
+ 349   2                      write_dat(temp / 10 / 10 + '0');
+ 350   2                      delayms(3);
+ 351   2                      write_dat(temp / 10 % 10 + '0');
+ 352   2                      delayms(3);
+ 353   2                      write_dat(0xdf);
+ 354   2                      delayms(3);
+ 355   2                      write_dat(0x43);
+ 356   2                      
+ 357   2                      
+ 358   2                      write_com(0x80 + 0x40 + 9);
+ 359   2                      delayms(3);
+ 360   2                      write_dat(mcu_send[6]/10 + '0');
+ 361   2                      delayms(3);
+ 362   2                      write_dat(mcu_send[6]%10 + '0');
+ 363   2                      
+ 364   2                      Usart_Communication();
+ 365   2                      delayms(2000);
+C51 COMPILER V9.56.0.0   51_DHT21                                                          01/01/2017 15:20:59 PAGE 7   
+
+ 366   2              }
+ 367   1      }
+ 368          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    856    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     72       4
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      1       1
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

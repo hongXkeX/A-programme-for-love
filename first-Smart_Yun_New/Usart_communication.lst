@@ -1,0 +1,232 @@
+C51 COMPILER V9.56.0.0   USART_COMMUNICATION                                               01/01/2017 12:55:18 PAGE 1   
+
+
+C51 COMPILER V9.56.0.0, COMPILATION OF MODULE USART_COMMUNICATION
+OBJECT MODULE PLACED IN Usart_communication.obj
+COMPILER INVOKED BY: F:\Keil_v5\C51\BIN\C51.EXE Usart\Usart_communication.c LARGE OPTIMIZE(8,SPEED) BROWSE INCDIR(.\Cont
+                    -rol;.\Delay;.\Key;.\Usart) DEBUG OBJECTEXTEND PRINT(.\Usart_communication.lst) OBJECT(Usart_communication.obj)
+
+line level    source
+
+   1          #include "Usart_communication.h"
+   2          #include "delay.h"
+   3          
+   4          unsigned char q1 = 5;
+   5          unsigned char q2 = 5;
+   6          
+   7          /* 处理串口传来的wifi数据 */
+   8          void Usart_Communication()
+   9          {
+  10   1              uchar i;
+  11   1              if( num_usart >= 10 )               // 100ms
+  12   1              {
+  13   2                      temper = usart2buf[5];
+  14   2                      humper = usart2buf[6];
+  15   2                      ET0 = 0;                        // switch off time0
+  16   2                      usrt2len = 0;
+  17   2                      num_usart = 0;      
+  18   2                      // usarrtflag = 1;
+  19   2                      usarrtflag = DateCheck();
+  20   2                      REN = 0;                        // switch off usart
+  21   2              }
+  22   1              if( usarrtflag )
+  23   1              {
+  24   2                      sn = usartbuf[5];               // 接收 由发送方给出的 消息序号(sn)
+  25   2                      checksum = 0; 
+  26   2                      switch( usartbuf[4] )           // 判断 wifi 传来的 cmd 类型
+  27   2                      {
+  28   3                              case 0x01:                  // 1.WiFi模组请求设备信息 WiFi模组发送 cmd
+  29   3                                      mcu_send_1[5] = sn;     // 改 MCU回复 数据中的 消息序号(sn) （接收方响应命令时需把消息序号返回给发送方
+             -）   
+  30   3                                      checksum = 0;
+  31   3                                      for( i = 2; i < 74; i++ )
+  32   3                                      {
+  33   4                                              checksum = checksum + mcu_send_1[i];
+  34   4                                      }
+  35   3                                      checksum = checksum % 256;             // 计算检验和(checksum)
+  36   3                                      mcu_send_1[74] = checksum;             // 改 MCU回复 数据中的 检验和(checksum)
+  37   3                                      Usart_SendArrang( mcu_send_1, 75 );    // 1.WiFi模组请求设备信息，设备MCU回复  
+  38   3                                      break;
+  39   3      
+  40   3                              case 0x07:                  // 2.WiFi模组与设备MCU的心跳  WiFi模组发送cmd              
+  41   3                                      mcu_send_2[5] = sn;     // 改 MCU回复 数据中的 消息序号(sn)
+  42   3                                      checksum = 0;
+  43   3                                      for( i = 2; i < 8; i++ )
+  44   3                                      {
+  45   4                                              checksum = checksum + mcu_send_2[i];
+  46   4                                      }
+  47   3                                      checksum = checksum % 256;
+  48   3                                      mcu_send_2[8] = checksum;
+  49   3                                      Usart_SendArrang( mcu_send_2, 9 );     // 2.WiFi模组与设备MCU的心跳  设备MCU回复
+  50   3                                      break;  
+  51   3      
+  52   3                              case 0x0a:                  // 3.设备MCU通知WiFi模组进入配置模式 WiFi模组回复cmd
+  53   3                                      lcd4 = 0;
+C51 COMPILER V9.56.0.0   USART_COMMUNICATION                                               01/01/2017 12:55:18 PAGE 2   
+
+  54   3                                      break;
+  55   3      
+  56   3                              case 0x0c:                  // 4.设备MCU重置WiFi模组  WiFi模组回复cmd
+  57   3                                      lcd4 = 1;
+  58   3                                      break;
+  59   3      
+  60   3                              case 0x0d:                  // 5.WiFi模组向设备MCU通知WiFi模组工作状态的变化 WiFi模组发送
+  61   3                                      lcd4 = 1;
+  62   3                                      lcd5 = ~lcd5;
+  63   3                                      // 判断wifi模组是否成功连上路由器
+  64   3                                      if( usartbuf[9] & 0x10 ) { 
+  65   4                                              lcd6 = 0;                             // 连上路由器亮第六个灯
+  66   4                                              q1 = 0;
+  67   4                                      } else if( ( (usartbuf[9] & 0x10) == 0 )  && q1 ) {
+  68   4                                              lcd6 = 1; 
+  69   4                                              delayms(400); 
+  70   4                                              lcd6 = 0; 
+  71   4                                              delayms(400);
+  72   4                                      }
+  73   3                                      // 判断wifi模组是否成功连上云端            
+  74   3                                      if( usartbuf[9] & 0x20 ) {
+  75   4                                              lcd7 = 0;   
+  76   4                                              q2 = 0;
+  77   4                                      } else if ( ( (usartbuf[9] & 0x20) == 0 )  && q2 )  {
+  78   4                                              lcd7 = 1; 
+  79   4                                              delayms(400); 
+  80   4                                              lcd7 = 0; 
+  81   4                                              delayms(400);
+  82   4                                      }
+  83   3                                      
+  84   3                                      mcu_send_5[5] = sn;
+  85   3                              
+  86   3                                      for( i = 2; i < 8; i++ )
+  87   3                                      {
+  88   4                                              checksum = checksum + mcu_send_5[i];
+  89   4                                      }
+  90   3                                      checksum = checksum % 256;
+  91   3                                      mcu_send_5[8] = checksum;
+  92   3                                      Usart_SendArrang( mcu_send_5, 9 ); // 5. 设备MCU回复
+  93   3                                      
+  94   3                                      checksum = 0;
+  95   3                                      mcu_send_9[5] = sn;
+  96   3                                      send_9_dev = ~P1;  // ( ((~P1) & 0x01) | ( (P1) & 0x02) )
+  97   3                                      
+  98   3                                      mcu_send_9[9] = send_9_dev;
+  99   3                                      mcu_send_9[10] = temper;
+ 100   3                                      mcu_send_9[11] = humper;
+ 101   3                                      
+ 102   3                                      for( i = 2; i < 12; i++ )
+ 103   3                                      {
+ 104   4                                              checksum = checksum + mcu_send_9[i];
+ 105   4                                      }
+ 106   3                                      checksum = checksum % 256;
+ 107   3                                      mcu_send_9[12] = checksum;
+ 108   3                                      Usart_SendArrang( mcu_send_9, 13 );
+ 109   3                                              
+ 110   3                                      break;
+ 111   3      
+ 112   3                              case 0x0f:                   // 6. WiFi模组请求重启MCU WiFi模组发送
+ 113   3                                      mcu_send_6[5] = sn;
+ 114   3                                      checksum = 0;
+ 115   3                                      for( i = 2; i < 8; i++ )
+C51 COMPILER V9.56.0.0   USART_COMMUNICATION                                               01/01/2017 12:55:18 PAGE 3   
+
+ 116   3                                      {
+ 117   4                                              checksum = checksum + mcu_send_6[i];
+ 118   4                                      }
+ 119   3                                      checksum = checksum % 256;
+ 120   3                                      mcu_send_6[8] = checksum;
+ 121   3                                      Usart_SendArrang( mcu_send_6, 9 );  // 6.设备MCU回复
+ 122   3                                      break;  
+ 123   3      
+ 124   3                              case 0x11:                 // 7.非法消息通知 WiFi模组回应MCU对应包序号的数据包非法
+ 125   3                                      mcu_send_7[5] = sn;
+ 126   3                                      checksum = 0;
+ 127   3                                      send_7_error = usartbuf[8];   // 存 error_code
+ 128   3                                      mcu_send_7[8] = send_7_error;
+ 129   3                                      for( i = 2; i < 9; i++ )
+ 130   3                                      {
+ 131   4                                              checksum = checksum + mcu_send_7[i];
+ 132   4                                      }
+ 133   3                                      checksum = checksum % 256;
+ 134   3                                      mcu_send_7[9] = checksum;
+ 135   3                                      Usart_SendArrang( mcu_send_7, 10 );       // MCU回应WiFi模组对应包序号的数据包非法
+ 136   3                                      break;
+ 137   3      
+ 138   3                              case 0x03:
+ 139   3                                      if( usartbuf[3] = 0x06 && usartbuf[8] == 0x02 )  // 8. WiFi模组读取设备的当前状态 WiFi模组发送
+ 140   3                                      {
+ 141   4                                              mcu_send_8[5] = sn;
+ 142   4                                              checksum = 0;
+ 143   4                                              send_8_dev = ~P1;  // ( ((~P1) & 0x01) | ( (~P0) & 0x02) )
+ 144   4                              
+ 145   4                                              mcu_send_8[9] = send_8_dev;
+ 146   4                                              mcu_send_8[10] = temper;
+ 147   4                                              mcu_send_8[11] = humper;    // dev_status(1B)
+ 148   4      
+ 149   4                                              for( i = 2; i < 12; i++ )
+ 150   4                                              {
+ 151   5                                                      checksum = checksum + mcu_send_8[i];
+ 152   5                                              }
+ 153   4                                              checksum = checksum % 256;
+ 154   4                                              mcu_send_8[12] = checksum;
+ 155   4                                              Usart_SendArrang( mcu_send_8, 13 );   // 8.设备MCU回复
+ 156   4                                              break;
+ 157   4                                      }
+ 158   3                                      if( usartbuf[3] = 0x08 && usartbuf[8] == 0x01 ) // 10.WiFi模组控制设备，WiFi模组发送
+ 159   3                                      {
+ 160   4                                              Control_Mcu();                                                          // 收到数据后，mcu控制设备函数
+ 161   4                                              
+ 162   4                                              mcu_send_10[5] = sn;
+ 163   4                                              for( i = 2; i < 8; i++ )
+ 164   4                                              {
+ 165   5                                                      checksum = checksum + mcu_send_10[i];
+ 166   5                                              }
+ 167   4                                              checksum = checksum % 256;
+ 168   4                                              mcu_send_10[8] = checksum;
+ 169   4                                              Usart_SendArrang( mcu_send_10, 9 );          // 10.WiFi模组控制设备，设备MCU回复
+ 170   4      
+ 171   4                                              mcu_send_9[5] = sn;
+ 172   4                                              send_9_dev = ~P1 ; // ( ((~P1) & 0x01) | ( (~P0) & 0x02) )
+ 173   4                                              checksum = 0;
+ 174   4                                              
+ 175   4                                              mcu_send_9[9] = send_9_dev;
+ 176   4                                              mcu_send_9[10] = temper;
+ 177   4                                              mcu_send_9[11] = humper;
+C51 COMPILER V9.56.0.0   USART_COMMUNICATION                                               01/01/2017 12:55:18 PAGE 4   
+
+ 178   4                                              
+ 179   4                                              for( i = 2; i < 12; i++ )
+ 180   4                                              {
+ 181   5                                                      checksum = checksum + mcu_send_9[i];
+ 182   5                                              }
+ 183   4                                              checksum = checksum % 256;
+ 184   4                                              mcu_send_9[12] = checksum;
+ 185   4                                              Usart_SendArrang( mcu_send_9, 13 );         // 9. mcu主动上报设备状态                                   
+ 186   4                                              break;  
+ 187   4                                      }
+ 188   3      
+ 189   3                              case 0x06:  // 9.设备MCU向WiFi模组主动上报当前状态 WiFi模组回复
+ 190   3                                      break;
+ 191   3      
+ 192   3                              case 0x16:  // 12.MCU通知WiFi模组进入可绑定模式 WiFi模组回复
+ 193   3                                      break;  
+ 194   3              
+ 195   3                      }
+ 196   2                      usrtlen = 0;
+ 197   2                      usarrtflag = 0;
+ 198   2                      REN = 1;
+ 199   2              }       
+ 200   1      }
+ 201          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1021    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =      2       1
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
